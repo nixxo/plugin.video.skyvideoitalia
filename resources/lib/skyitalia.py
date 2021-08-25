@@ -17,6 +17,10 @@ class SkyItalia:
         opener = urllib2.build_opener()
         urllib2.install_opener(opener)
 
+    def error(self, msg):
+        import xbmc
+        xbmc.log('SkyVideoItalia: %s' % msg, level=xbmc.LOGERROR)
+
     def clean_title(self, title):
         import html
         title = html.unescape(title)
@@ -27,7 +31,8 @@ class SkyItalia:
         try:
             page = urllib2.urlopen(self.HOME).read().decode('utf-8')
         except :
-            return 'MAIN MENU ERROR'
+            self.error('MAIN MENU ERROR')
+            return
         m = re.search('"content":([\\s\\S]+?),\\s*"highlights"', page, re.S)
         if not m: 
             return []
@@ -40,7 +45,8 @@ class SkyItalia:
                 if menu[item]['active'] == 'Y':
                     clean_menu.append(menu[item])
         except :
-            return 'JSON ERROR'
+            self.error('JSON ERROR')
+            return
         return clean_menu
     
     def get_section(self, section):
@@ -49,7 +55,8 @@ class SkyItalia:
             url = '%s%s' % (self.HOME, section)
             page = urllib2.urlopen(url).read().decode('utf-8')
         except :
-            return 'PAGE ERROR'
+            self.error('PAGE ERROR')
+            return
 
         section = []
         for match in re.finditer(
@@ -70,8 +77,34 @@ class SkyItalia:
         try:
             subsection = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
         except :
-            return 'ERROR'
+            self.error('GET SUBSECTION ERROR')
+            return
         return subsection['assets']
+
+    def get_playlist(self, section, subsection):
+        # web_pdb.set_trace()
+        url = self.GET_PLAYLISTS
+        url = url.replace('{token}', self.TOKEN)
+        url = url.replace('{section}', section)
+        url = url.replace('{subsection}', subsection)
+        try:
+            playlist = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
+        except :
+            self.error('GET PLAYLIST ERROR')
+            return
+        return playlist
+
+    def get_playlist_content(self, playlist_id):
+        url = self.GET_PLAYLIST_VIDEO
+        url = url.replace('{token}', self.TOKEN)
+        url = url.replace('{id}', playlist_id)
+        try:
+            playlist = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
+        except :
+            self.error('NO PLAYLIST CONTENT')
+            return
+        return playlist['assets']
+
 
     def get_access_token_url(self, url, token):
         url = self.GET_VOD_ACCESS_TOKEN
@@ -80,7 +113,8 @@ class SkyItalia:
         try:
             video = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
         except :
-            return 'VOD TOKEN ERROR'
+            self.error('VOD TOKEN ERROR')
+            return
         return video['url']
 
     def get_video(self, asset_id):
@@ -91,7 +125,8 @@ class SkyItalia:
         try:
             video = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
         except :
-            return 'VIDEO ERROR'
+            self.error('GET VIDEO ERROR')
+            return
 
         url = video.get('web_hd_url')
         if not url:

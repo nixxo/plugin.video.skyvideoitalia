@@ -39,34 +39,65 @@ def addLinkItem(parameters, li, url=''):
         handle=handle, url=url, listitem=li, isFolder=False)
 
 
-handle = int(sys.argv[1])
-params = parameters_string_to_dict(sys.argv[2])
-skyit = SkyItalia()
-section = str(params.get('section', ''))
-subsection = str(params.get('subsection', ''))
-asset_id = str(params.get('asset_id', ''))
-
-if asset_id != '':
-    # PLAY VIDEO
-    # web_pdb.set_trace()
-    xbmc.log('Media asset_id: %s' % asset_id)
-    url = skyit.get_video(asset_id)
-    xbmc.log('Media URL:  %s' % url)
-    item = xbmcgui.ListItem(path=url)
-    xbmcplugin.setResolvedUrl(handle=handle, succeeded=True, listitem=item)
-
-elif subsection != '' and section != '':
-    # SUBSECTION MENU
-    menu = skyit.get_subsection(section, subsection)
-    # web_pdb.set_trace()
-    for item in menu:
+def addPlayItems(items):
+    for item in items:
         title = skyit.clean_title(item['title'])
         liStyle = xbmcgui.ListItem(title)
         liStyle.setArt({"thumb": item['video_still']})
         liStyle.setInfo("video", {})
         addLinkItem({
-            'asset_id': item['asset_id']},
-            liStyle)
+            'asset_id': item['asset_id'],
+            }, liStyle)
+
+
+handle = int(sys.argv[1])
+params = parameters_string_to_dict(sys.argv[2])
+skyit = SkyItalia()
+section = str(params.get('section', ''))
+subsection = str(params.get('subsection', ''))
+playlist = str(params.get('playlist', ''))
+title = str(params.get('title', ''))
+playlist_id = str(params.get('playlist_id', ''))
+asset_id = str(params.get('asset_id', ''))
+
+if asset_id != '':
+    # PLAY VIDEO
+    url = skyit.get_video(asset_id)
+    xbmc.log('Media URL:  %s' % url)
+    item = xbmcgui.ListItem(path=url)
+    xbmcplugin.setResolvedUrl(handle=handle, succeeded=True, listitem=item)
+
+elif playlist_id != '':
+    # PLAYLIST CONTENT
+    playlist = skyit.get_playlist_content(playlist_id)
+    addPlayItems(playlist)
+    xbmcplugin.endOfDirectory(handle=handle, succeeded=True)  
+
+elif playlist != '' and subsection != '' and section != '':
+    # PLAYLIST SECTION
+    playlist = skyit.get_playlist(section, subsection)
+    for item in playlist:
+        title = skyit.clean_title(item['title'])
+        liStyle = xbmcgui.ListItem(title)
+        liStyle.setArt({"thumb": item['thumb']})
+        addDirectoryItem({
+            'playlist_id': item['playlist_id'],
+            }, liStyle)
+    xbmcplugin.endOfDirectory(handle=handle, succeeded=True)  
+
+elif title != '' and subsection != '' and section != '':
+    # SUBSECTION MENU
+    menu = skyit.get_subsection(section, subsection)
+    # web_pdb.set_trace()
+    thumb = '%s%s\\%s.png' % (logosdir, section, subsection)
+    liStyle = xbmcgui.ListItem('Playlist di %s' % title)
+    liStyle.setArt({"thumb": thumb})
+    addDirectoryItem({
+        'section': section,
+        'subsection': subsection,
+        'playlist': title,
+        }, liStyle)
+    addPlayItems(menu)
     xbmcplugin.endOfDirectory(handle=handle, succeeded=True)  
 
 elif section != '':
@@ -81,8 +112,9 @@ elif section != '':
         liStyle.setArt({"thumb": thumb})
         addDirectoryItem({
             'section': section,
-            'subsection': item['link']},
-            liStyle)
+            'subsection': item['link'],
+            'title': title,
+            }, liStyle)
     xbmcplugin.endOfDirectory(handle=handle, succeeded=True)
 
 else:
