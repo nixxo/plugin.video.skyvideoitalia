@@ -1,7 +1,6 @@
-import json
-import re
+# -*- coding: utf-8 -*-
+import json, re
 import urllib.request as urllib2
-import web_pdb
 
 
 class SkyItalia:
@@ -17,10 +16,6 @@ class SkyItalia:
         opener = urllib2.build_opener()
         urllib2.install_opener(opener)
 
-    def error(self, msg):
-        import xbmc
-        xbmc.log('SkyVideoItalia: %s' % msg, level=xbmc.LOGERROR)
-
     def clean_title(self, title):
         import html
         title = html.unescape(title)
@@ -31,12 +26,12 @@ class SkyItalia:
         try:
             page = urllib2.urlopen(self.HOME).read().decode('utf-8')
         except :
-            self.error('MAIN MENU ERROR')
+            self.log('get_main error: "%s" not available' % self.HOME)
             return
         m = re.search('"content":([\\s\\S]+?),\\s*"highlights"', page, re.S)
-        if not m: 
-            return []
-        # web_pdb.set_trace()
+        if not m:
+            self.log('get_main error: JSON not found in webpage')
+            return
         try:
             menu = json.loads(m.group(1))
             clean_menu = []
@@ -45,17 +40,16 @@ class SkyItalia:
                 if menu[item]['active'] == 'Y':
                     clean_menu.append(menu[item])
         except :
-            self.error('JSON ERROR')
+            self.log('get_main error: JSON decode error')
             return
         return clean_menu
     
     def get_section(self, section):
-        # web_pdb.set_trace()
         try:
             url = '%s%s' % (self.HOME, section)
             page = urllib2.urlopen(url).read().decode('utf-8')
         except :
-            self.error('PAGE ERROR')
+            self.log('get_section error with section: "%s"' % section)
             return
 
         section = []
@@ -77,7 +71,7 @@ class SkyItalia:
         try:
             subsection = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
         except :
-            self.error('GET SUBSECTION ERROR')
+            self.log('get_subsection error with sec/subsec: "%s/%s"' % [section, subsection])
             return
         return subsection['assets']
 
@@ -90,7 +84,7 @@ class SkyItalia:
         try:
             playlist = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
         except :
-            self.error('GET PLAYLIST ERROR')
+            self.log('get_playlist error with sec/subsec: "%s/%s"' % [section, subsection])
             return
         return playlist
 
@@ -101,10 +95,9 @@ class SkyItalia:
         try:
             playlist = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
         except :
-            self.error('NO PLAYLIST CONTENT')
+            self.log('get_playlist_content with playlist_id: "%s"' % playlist_id)
             return
         return playlist['assets']
-
 
     def get_access_token_url(self, url, token):
         url = self.GET_VOD_ACCESS_TOKEN
@@ -113,19 +106,18 @@ class SkyItalia:
         try:
             video = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
         except :
-            self.error('VOD TOKEN ERROR')
+            self.log('get_access_token_url error with url: "%s" and token: "%s"' % [url, token])
             return
         return video['url']
 
     def get_video(self, asset_id):
-        # web_pdb.set_trace()
         url = self.GET_VIDEO_DATA
         url = url.replace('{token}', self.TOKEN)
         url = url.replace('{id}', asset_id)
         try:
             video = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
         except :
-            self.error('GET VIDEO ERROR')
+            self.log('get_video error with asset_id: "%s"' % asset_id)
             return
 
         url = video.get('web_hd_url')

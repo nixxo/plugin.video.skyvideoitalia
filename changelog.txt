@@ -1,0 +1,10 @@
+[B]0.0.3[/B]
+- removed unnecessary library
+- using phate89 kodi library
+- code refactoring
+
+[B]0.0.2[/B]
+- added playlists
+
+[B]0.0.1[/B]]
+- first release
