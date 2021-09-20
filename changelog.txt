@@ -1,3 +1,7 @@
+[B]0.0.4[/B]
+- code improvements
+- added fanart to listitems
+
 [B]0.0.3[/B]
 - removed unnecessary library
 - using phate89 kodi library
