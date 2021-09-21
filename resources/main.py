@@ -22,38 +22,38 @@ class SkyVideoItalia(object):
         params = staticutils.getParams()
         if 'asset_id' in params:
             # PLAY VIDEO
-            url = self.skyit.get_video(params['asset_id'])
+            url = self.skyit.getVideo(params['asset_id'])
             if url:
-                kodiutils.log('Media URL:  %s' % url)
+                self.skyit.log('Media URL:  %s' % url)
                 kodiutils.setResolvedUrl(url)
             else:
                 kodiutils.setResolvedUrl(solved=False)
 
         elif 'playlist_id' in params:
             # PLAYLIST CONTENT
-            playlist_content = self.skyit.get_playlist_content(params['playlist_id'])
+            playlist_content = self.skyit.getPlaylistContent(params['playlist_id'])
             self.addItems(playlist_content)
 
         elif all(x in params for x in ['playlist', 'section', 'subsection']):
             # PLAYLIST SECTION
-            playlist = self.skyit.get_playlist(
+            playlist = self.skyit.getPlaylists(
                 params['section'], params['subsection'])
             self.addItems(playlist)
 
         elif all(x in params for x in ['title', 'section', 'subsection']):
             # SUBSECTION MENU
-            subsection_content = self.skyit.get_subsection(
+            subsection_content = self.skyit.getSubSection(
                 params['section'], params['subsection'], params['title'])
             self.addItems(subsection_content)
 
         elif 'section' in params:
             # SECTION MENU
-            section_content = self.skyit.get_section(params['section'])
+            section_content = self.skyit.getSection(params['section'])
             self.addItems(section_content)
 
         else:
             # MAIN MENU
-            menu = self.skyit.get_main()
+            menu = self.skyit.getMainMenu()
             self.addItems(menu)
 
         kodiutils.endScript()

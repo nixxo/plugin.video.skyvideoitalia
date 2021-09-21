@@ -1,3 +1,7 @@
+[B]0.0.5[/B]
+- code improvements
+- using simplecache
+
 [B]0.0.4[/B]
 - code improvements
 - added fanart to listitems

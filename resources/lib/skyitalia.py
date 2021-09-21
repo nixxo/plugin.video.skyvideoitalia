@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
-import json, re
+import json, re, datetime, socket
+import xbmc
 import urllib.request as urllib2
+from simplecache import SimpleCache
 from phate89lib import kodiutils
 
 
@@ -12,14 +14,43 @@ class SkyItalia:
     GET_VIDEO_DATA = 'https://apid.sky.it/vdp/v1/getVideoData?token={token}&caller=sky&rendition=web&id={id}'  # noqa: E501
     GET_VOD_ACCESS_TOKEN = 'https://apid.sky.it/vdp/v1/getVodAccessToken?token={token}&url={url}&dec=0'  # noqa: E501
     TOKEN = 'F96WlOd8yoFmLQgiqv6fNQRvHZcsWk5jDaYnDvhbiJk'
-    LOGOSDIR = ''
-    FANART = ''
+    TIMEOUT = 15
+    DEBUG = kodiutils.getSetting('Debug') == 'true'
+    QUALITY = kodiutils.getSetting('Quality')
+    QUALITIES = ['web_low_url', 'web_med_url', 'web_high_url', 'web_hd_url']
+    LOGOSDIR = '%sresources\\logos\\' % kodiutils.PATH_T
+    FANART = '%sresources\\fanart.png' % kodiutils.PATH_T
 
     def __init__(self):
         opener = urllib2.build_opener()
-        urllib2.install_opener(opener)
-        self.LOGOSDIR = '%sresources\\logos\\' % kodiutils.PATH_T
-        self.FANART = '%sresources\\fanart.png' % kodiutils.PATH_T
+        socket.setdefaulttimeout(self.TIMEOUT)
+        self.cache = SimpleCache()
+
+    def log(self, msg, level=xbmc.LOGDEBUG):
+        import traceback
+        if self.DEBUG is False and level != xbmc.LOGERROR:
+            return
+        if level == xbmc.LOGERROR:
+            msg += ' ,' + traceback.format_exc()
+        xbmc.log('%s - %s - %s' % (kodiutils.ID, kodiutils.VERSION, msg), level)
+
+    def openURL(self, url):
+        self.log('openURL, url = %s' % url)
+        try:
+            cacheresponse = self.cache.get(
+                '%s.openURL, url = %s' % (kodiutils.NAME, url))
+            if not cacheresponse:
+                request = urllib2.Request(url)              
+                response = urllib2.urlopen(request, timeout=self.TIMEOUT).read()
+                self.cache.set(
+                    '%s.openURL, url = %s' % (kodiutils.NAME, url),
+                    response,
+                    expiration=datetime.timedelta(days=1))
+            return self.cache.get('%s.openURL, url = %s' % (kodiutils.NAME, url))
+        except Exception as e:
+            self.log("openURL Failed! " + str(e), xbmc.LOGERROR)
+            kodiutils.notify(kodiutils.LANGUAGE(30003))
+            kodiutils.endScript()
 
     def clean_title(self, title):
         import html
@@ -27,21 +58,63 @@ class SkyItalia:
         title = re.sub(r'^VIDEO:*\s+', '', title)
         return title
 
-    def get_main(self):
-        try:
-            page = urllib2.urlopen(self.HOME).read().decode('utf-8')
-        except :
-            kodiutils.log('get_main error: "%s" not available' % self.HOME)
+    def loadData(self, url):
+        self.log('loadData, url = %s' % url)
+        response = self.openURL(url)
+        if len(response) == 0:
+            kodiutils.notify(kodiutils.LANGUAGE(31000))
+            self.log('loadData: "%s" not available' % url, xbmc.LOGERROR)
             return
-        m = re.search('"content":([\\s\\S]+?),\\s*"highlights"', page, re.S)
-        if not m:
-            self.log('get_main error: JSON not found in webpage')
-            return
+        response = response.decode('utf-8')
+
         try:
-            menu = json.loads(m.group(1))
+            # try if the file is json
+            items = json.loads(response)
         except:
-            kodiutils.log('get_main error: JSON decode error')
-            return
+            # file is html
+            self.log('loadData, html page found')
+            try:
+                # section page, search for subsections
+                subs = re.findall(
+                    r'menu-entry-sub[^"]*"><a href="%s/(.+?)">(.+?)</a>' % url,
+                    response, re.S)
+                if len(subs) > 0:
+                    self.log('loadData, subsections menu found')
+                    return subs
+
+                # search the main menu
+                main = re.search(
+                    r'"content":([\s\S]+?),\s*"highlights"', response).group(1)
+                items = json.loads(main)
+                self.log('loadData, main menu found')
+            except Exception as e:
+                kodiutils.notify(kodiutils.LANGUAGE(31001))
+                self.log('loadJsonData, NO JSON DATA FOUND' + str(e), xbmc.LOGERROR)
+                kodiutils.endScript()
+
+        return items
+
+    def getAssets(self, data):
+        for item in data['assets']:
+            label = self.clean_title(item['title'])
+            yield {
+                'label': label,
+                'params': {
+                    'asset_id': item['asset_id']
+                },
+                'arts': {
+                    'thumb': item.get('video_still') or item.get('thumb'),
+                    'fanart': self.FANART,
+                },
+                'videoInfo': {
+                    'mediatype': 'video',
+                    'title': label,
+                },
+                'isPlayable': True,
+            }
+
+    def getMainMenu(self):
+        menu = self.loadData(self.HOME)
         for item in menu:
             # yield only active menu element
             if menu[item]['active'] == 'Y':
@@ -57,44 +130,25 @@ class SkyItalia:
                     },
                 }
     
-    def get_section(self, section):
-        try:
-            url = '%s%s' % (self.HOME, section)
-            page = urllib2.urlopen(url).read().decode('utf-8')
-        except :
-            self.log('get_section error with section: "%s"' % section)
-            return
-
-        for match in re.finditer(
-                'menu-entry-sub[^"]*"><a href="%s/(.+?)">(.+?)</a>' % url,
-                page, re.S):
-            label = self.clean_title(match[2])
+    def getSection(self, section):
+        subsections = self.loadData('%s%s' % (self.HOME, section))
+        for s, t in subsections:
+            label = self.clean_title(t)
             yield {
                 'label': label,
                 'params': {
                     'section': section,
-                    'subsection': match[1],
+                    'subsection': s,
                     'title': label,
                 },
                 'arts': {
                     'thumb': '%s%s\\%s.png' % (
-                        self.LOGOSDIR, section, match[1]),
+                        self.LOGOSDIR, section, s),
                     'fanart': self.FANART,
                 },
             }
 
-    def get_subsection(self, section, subsection, title, page=0):
-        url = self.GET_VIDEO_SEARCH
-        url = url.replace('{token}', self.TOKEN)
-        url = url.replace('{section}', section)
-        url = url.replace('{subsection}', subsection)
-        url = url.replace('{page}', str(page))
-        try:
-            subs = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
-        except :
-            self.log('get_subsection error with sec/subsec: "%s/%s"' % [section, subsection])
-            return
-
+    def getSubSection(self, section, subsection, title, page=0):
         yield {
             'label': kodiutils.LANGUAGE(32001) % title,
             'params': {
@@ -109,34 +163,22 @@ class SkyItalia:
             },
         }
 
-        for item in subs['assets']:
-            yield {
-                'label': self.clean_title(item['title']),
-                'params': {
-                    'asset_id': item['asset_id']
-                },
-                'arts': {
-                    'thumb': item['video_still'],
-                    'fanart': self.FANART,
-                },
-                'videoInfo': {
-                    'mediatype': 'video',
-                },
-                'isPlayable': True,
-            }
+        url = self.GET_VIDEO_SEARCH
+        url = url.replace('{token}', self.TOKEN)
+        url = url.replace('{section}', section)
+        url = url.replace('{subsection}', subsection)
+        url = url.replace('{page}', str(page))
+        data = self.loadData(url)
+        yield from self.getAssets(data)
 
-    def get_playlist(self, section, subsection):
+    def getPlaylists(self, section, subsection):
         url = self.GET_PLAYLISTS
         url = url.replace('{token}', self.TOKEN)
         url = url.replace('{section}', section)
         url = url.replace('{subsection}', subsection)
-        try:
-            playlist = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
-        except :
-            self.log('get_playlist error with sec/subsec: "%s/%s"' % [section, subsection])
-            return
+        data = self.loadData(url)
 
-        for item in playlist:
+        for item in data:
             yield {
                 'label': self.clean_title(item['title']),
                 'params': {
@@ -148,58 +190,31 @@ class SkyItalia:
                 },
             }
 
-    def get_playlist_content(self, playlist_id):
+    def getPlaylistContent(self, playlist_id):
         url = self.GET_PLAYLIST_VIDEO
         url = url.replace('{token}', self.TOKEN)
         url = url.replace('{id}', playlist_id)
-        try:
-            playlist = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
-        except :
-            self.log('get_playlist_content with playlist_id: "%s"' % playlist_id)
-            return
-        for item in playlist['assets']:
-            yield {
-                'label': self.clean_title(item['title']),
-                'params': {
-                    'asset_id': item['asset_id']
-                },
-                'arts': {
-                    'thumb': item['video_still'],
-                    'fanart': self.FANART,
-                },
-                'videoInfo': {
-                    'mediatype': 'video',
-                },
-                'isPlayable': True,
-            }
+        data = self.loadData(url)
+        yield from self.getAssets(data)
 
-    def get_access_token_url(self, url, token):
+    # Likely deprecated
+    def getAccessTokenUrl(self, url, token):
         url = self.GET_VOD_ACCESS_TOKEN
         url = url.replace('{token}', token)
         url = url.replace('{url}', url)
-        try:
-            video = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
-        except :
-            self.log('get_access_token_url error with url: "%s" and token: "%s"' % [url, token])
-            return
-        return video['url']
+        data = self.loadData(url)
+        return data.get('url')
 
-    def get_video(self, asset_id):
+    def getVideo(self, asset_id):
         url = self.GET_VIDEO_DATA
         url = url.replace('{token}', self.TOKEN)
         url = url.replace('{id}', asset_id)
-        try:
-            video = json.loads(urllib2.urlopen(url).read().decode('utf-8'))
-        except :
-            self.log('get_video error with asset_id: "%s"' % asset_id)
-            return
+        data = self.loadData(url)
 
-        url = video.get('web_hd_url')
-        if not url:
-            url = video.get('web_high_url')
-        if not url:
-            url = video.get('web_med_url')
-        if not url:
-            url = video.get('web_low_url')
+        url = None
+        for i in range(int(self.QUALITY), 0, -1):
+            if self.QUALITIES[i] in data:
+                url = data[self.QUALITIES[i]]
+                break
 
         return url
