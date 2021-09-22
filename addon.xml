@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.skyvideoitalia" name="Sky Video Italia" version="0.0.5" provider-name="nixxo">
+<addon id="plugin.video.skyvideoitalia" name="Sky Video Italia" version="0.0.6" provider-name="nixxo">
     <requires>
         <import addon="xbmc.python" version="3.0.0" />
         <import addon="script.module.simplecache" version="1.0.0"/>
@@ -18,9 +18,11 @@
         <license>GPL-3.0-or-later</license>
         <website>https://www.github.com/nixxo</website>
         <source>https://www.github.com/nixxo/plugin.video.skyvideoitalia</source>
-        <news>0.0.5
-- code improvements
-- using simplecache
+        <news>0.0.6
+- code cleanup
+- added some more logos
+- thumb > icon for playlist images
+- removed vod acces token method
         </news>
         <assets>
             <icon>resources/icon.png</icon>

@@ -12,7 +12,6 @@ class SkyItalia:
     GET_PLAYLISTS = 'https://video.sky.it/be/getPlaylistInfo?token={token}&section={section}&subsection={subsection}&start=0&limit=31'  # noqa: E501
     GET_PLAYLIST_VIDEO = 'https://video.sky.it/be/getPlaylistVideoData?token={token}&id={id}'  # noqa: E501
     GET_VIDEO_DATA = 'https://apid.sky.it/vdp/v1/getVideoData?token={token}&caller=sky&rendition=web&id={id}'  # noqa: E501
-    GET_VOD_ACCESS_TOKEN = 'https://apid.sky.it/vdp/v1/getVodAccessToken?token={token}&url={url}&dec=0'  # noqa: E501
     TOKEN = 'F96WlOd8yoFmLQgiqv6fNQRvHZcsWk5jDaYnDvhbiJk'
     TIMEOUT = 15
     DEBUG = kodiutils.getSetting('Debug') == 'true'
@@ -22,7 +21,6 @@ class SkyItalia:
     FANART = '%sresources\\fanart.png' % kodiutils.PATH_T
 
     def __init__(self):
-        opener = urllib2.build_opener()
         socket.setdefaulttimeout(self.TIMEOUT)
         self.cache = SimpleCache()
 
@@ -49,10 +47,10 @@ class SkyItalia:
             return self.cache.get('%s.openURL, url = %s' % (kodiutils.NAME, url))
         except Exception as e:
             self.log("openURL Failed! " + str(e), xbmc.LOGERROR)
-            kodiutils.notify(kodiutils.LANGUAGE(30003))
+            kodiutils.notify(kodiutils.LANGUAGE(31000))
             kodiutils.endScript()
 
-    def clean_title(self, title):
+    def cleanTitle(self, title):
         import html
         title = html.unescape(title)
         title = re.sub(r'^VIDEO:*\s+', '', title)
@@ -95,8 +93,9 @@ class SkyItalia:
         return items
 
     def getAssets(self, data):
+        self.log('%d assets found' % len(data['assets']))
         for item in data['assets']:
-            label = self.clean_title(item['title'])
+            label = self.cleanTitle(item['title'])
             yield {
                 'label': label,
                 'params': {
@@ -116,7 +115,7 @@ class SkyItalia:
     def getMainMenu(self):
         menu = self.loadData(self.HOME)
         for item in menu:
-            # yield only active menu element
+            # yield only active menu elements
             if menu[item]['active'] == 'Y':
                 section = item.strip('/')
                 yield {
@@ -125,7 +124,7 @@ class SkyItalia:
                         'section': section
                     },
                     'arts': {
-                        'thumb': '%s%s.png' % (self.LOGOSDIR, section),
+                        'icon': '%s%s.png' % (self.LOGOSDIR, section),
                         'fanart': self.FANART,
                     },
                 }
@@ -133,7 +132,7 @@ class SkyItalia:
     def getSection(self, section):
         subsections = self.loadData('%s%s' % (self.HOME, section))
         for s, t in subsections:
-            label = self.clean_title(t)
+            label = self.cleanTitle(t)
             yield {
                 'label': label,
                 'params': {
@@ -142,7 +141,7 @@ class SkyItalia:
                     'title': label,
                 },
                 'arts': {
-                    'thumb': '%s%s\\%s.png' % (
+                    'icon': '%s%s\\%s.png' % (
                         self.LOGOSDIR, section, s),
                     'fanart': self.FANART,
                 },
@@ -157,7 +156,7 @@ class SkyItalia:
                 'playlist': title,
             },
             'arts': {
-                'thumb': '%s%s\\%s.png' % (
+                'icon': '%s%s\\%s.png' % (
                     self.LOGOSDIR, section, subsection),
                 'fanart': self.FANART,
             },
@@ -180,7 +179,7 @@ class SkyItalia:
 
         for item in data:
             yield {
-                'label': self.clean_title(item['title']),
+                'label': self.cleanTitle(item['title']),
                 'params': {
                     'playlist_id': item['playlist_id'],
                 },
@@ -196,14 +195,6 @@ class SkyItalia:
         url = url.replace('{id}', playlist_id)
         data = self.loadData(url)
         yield from self.getAssets(data)
-
-    # Likely deprecated
-    def getAccessTokenUrl(self, url, token):
-        url = self.GET_VOD_ACCESS_TOKEN
-        url = url.replace('{token}', token)
-        url = url.replace('{url}', url)
-        data = self.loadData(url)
-        return data.get('url')
 
     def getVideo(self, asset_id):
         url = self.GET_VIDEO_DATA

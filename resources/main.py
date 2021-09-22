@@ -12,6 +12,7 @@ class SkyVideoItalia(object):
         for item in items:
             kodiutils.addListItem(
                 label=item.get('label'),
+                label2=item.get('label2'),
                 params=item.get('params'),
                 videoInfo=item.get('videoInfo'),
                 arts=item.get('arts'),
@@ -20,11 +21,12 @@ class SkyVideoItalia(object):
 
     def main(self):
         params = staticutils.getParams()
+        self.skyit.log('Params = %s' % str(params))
         if 'asset_id' in params:
             # PLAY VIDEO
             url = self.skyit.getVideo(params['asset_id'])
             if url:
-                self.skyit.log('Media URL:  %s' % url)
+                self.skyit.log('Media URL:  %s' % url, 1)
                 kodiutils.setResolvedUrl(url)
             else:
                 kodiutils.setResolvedUrl(solved=False)

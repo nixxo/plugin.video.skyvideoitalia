@@ -1,3 +1,9 @@
+[B]0.0.6[/B]
+- code cleanup
+- added some more logos
+- thumb > icon for playlist images
+- removed vod acces token method
+
 [B]0.0.5[/B]
 - code improvements
 - using simplecache
