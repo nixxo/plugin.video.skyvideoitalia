@@ -28,6 +28,10 @@ msgctxt "#30002"
 msgid "Maximum Quality"
 msgstr ""
 
+msgctxt "#30003"
+msgid "Log Level (for developers)"
+msgstr ""
+
 msgctxt "#31000"
 msgid "Error retrieving URL. Check log."
 msgstr ""
@@ -38,6 +42,10 @@ msgstr ""
 
 msgctxt "#31002"
 msgid "JSON decode error"
+msgstr ""
+
+msgctxt "#31003"
+msgid "MEDIA URL NOT FOUND"
 msgstr ""
 
 msgctxt "#32001"

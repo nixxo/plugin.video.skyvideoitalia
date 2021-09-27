@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from resources.lib.skyitalia import SkyItalia
-from phate89lib import kodiutils, staticutils
+from resources.lib.skyitalia import SkyItalia, addonutils
 
 
 class SkyVideoItalia(object):
@@ -9,8 +8,11 @@ class SkyVideoItalia(object):
         self.skyit = SkyItalia()
 
     def addItems(self, items):
+        video = False
         for item in items:
-            kodiutils.addListItem(
+            if item.get('videoInfo'):
+                video = any([item['videoInfo'].get('mediatype') == 'video', video])
+            addonutils.addListItem(
                 label=item.get('label'),
                 label2=item.get('label2'),
                 params=item.get('params'),
@@ -18,18 +20,22 @@ class SkyVideoItalia(object):
                 arts=item.get('arts'),
                 isFolder=False if item.get('isPlayable') else True,
             )
+        if video:
+            addonutils.setContent('videos')
 
     def main(self):
-        params = staticutils.getParams()
-        self.skyit.log('Params = %s' % str(params))
+        params = addonutils.getParams()
+        addonutils.log('main, Params = %s' % str(params))
         if 'asset_id' in params:
             # PLAY VIDEO
             url = self.skyit.getVideo(params['asset_id'])
             if url:
-                self.skyit.log('Media URL:  %s' % url, 1)
-                kodiutils.setResolvedUrl(url)
+                self.skyit.log('main, Media URL = %s' % url, 1)
+                addonutils.setResolvedUrl(url)
             else:
-                kodiutils.setResolvedUrl(solved=False)
+                self.skyit.log('main, Media URL not found, asset_id = %s' % params['asset_id'], 3)
+                addonutils.notify(addonutils.LANGUAGE(31003))
+                addonutils.setResolvedUrl(solved=False)
 
         elif 'playlist_id' in params:
             # PLAYLIST CONTENT
@@ -58,4 +64,5 @@ class SkyVideoItalia(object):
             menu = self.skyit.getMainMenu()
             self.addItems(menu)
 
-        kodiutils.endScript()
+        self.skyit = None
+        addonutils.endScript(exit=False)

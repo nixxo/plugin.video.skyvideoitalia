@@ -1,29 +1,26 @@
 ﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.skyvideoitalia" name="Sky Video Italia" version="0.0.6" provider-name="nixxo">
+<addon id="plugin.video.skyvideoitalia" name="Sky Video Italia" version="0.0.7" provider-name="nixxo">
     <requires>
         <import addon="xbmc.python" version="3.0.0" />
         <import addon="script.module.simplecache" version="1.0.0"/>
-        <import addon="script.module.phate89" version="1.2.1+matrix.1"/>
     </requires>
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>video</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
         <summary lang="it_IT">Visualizza contenuti di Sky Video Italia</summary>
-        <description lang="it_IT">Visualizza contenuti di Sky Video Italia</description>
+        <description lang="it_IT">Visualizza contenuti video del portale di Sky Italia (video.sky.it). Notizie, sport, intrattenimento e tanto altro.</description>
         <summary lang="en_GB">Show content from Sky Video Italia</summary>
-        <description lang="en_GB">Show content from Sky Video Italia</description>
+        <description lang="en_GB">Show video content from the website of Sky Italia (video.sky.it). News, sport, entertainment and much more.</description>
         <language>it</language>
         <platform>all</platform>
         <license>GPL-3.0-or-later</license>
         <website>https://www.github.com/nixxo</website>
         <source>https://www.github.com/nixxo/plugin.video.skyvideoitalia</source>
-        <news>0.0.6
-- code cleanup
-- added some more logos
-- thumb > icon for playlist images
-- removed vod acces token method
-        </news>
+        <news>0.0.7
+- removed phate89 library and use a custom one
+- logging and notification cleanup
+- better addon description</news>
         <assets>
             <icon>resources/icon.png</icon>
             <fanart>resources/fanart.png</fanart>
