@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from resources.lib.skyitalia import SkyItalia, addonutils
+from resources.lib.skyitalia import addonutils
+from resources.lib.skyitalia import SkyItalia
 
 
 class SkyVideoItalia(object):

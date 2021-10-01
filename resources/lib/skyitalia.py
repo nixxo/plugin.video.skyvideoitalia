@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
-import json, re, datetime, socket
+import datetime
+import html
+import json
+import re
 import urllib.request as urllib2
-from simplecache import SimpleCache
+
 from . import addonutils
+from simplecache import SimpleCache
 
 
 class SkyItalia:
@@ -20,7 +24,6 @@ class SkyItalia:
     FANART = addonutils.FANART
 
     def __init__(self):
-        socket.setdefaulttimeout(self.TIMEOUT)
         self.cache = SimpleCache()
 
     def log(self, msg, level=0):
@@ -48,7 +51,6 @@ class SkyItalia:
             addonutils.endScript()
 
     def cleanTitle(self, title):
-        import html
         title = html.unescape(title)
         title = re.sub(r'^VIDEO:*\s+', '', title)
         return title

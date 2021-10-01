@@ -1,3 +1,7 @@
+[B]1.0.0[/B]
+- first public release
+- code cleanup, unix eol
+
 [B]0.0.7[/B]
 - removed phate89 library and use a custom one
 - logging and notification cleanup
