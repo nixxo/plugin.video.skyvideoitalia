@@ -1,3 +1,9 @@
+[B]1.0.2[/B]
+- added live streams
+- using requests lib
+- fix localization
+- modified directory structure
+
 [B]1.0.1[/B]
 - added missing logos (removed unused)
 - added getSettingAsInt
