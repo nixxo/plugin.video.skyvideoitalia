@@ -1,3 +1,7 @@
+[B]1.0.3[/B]
+- iconpath bugfix
+- settings to kodi19 standards
+
 [B]1.0.2[/B]
 - added live streams
 - using requests lib
