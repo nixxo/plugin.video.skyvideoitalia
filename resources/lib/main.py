@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 from resources.lib.skyitalia import SkyItalia
 from resources.lib import addonutils
+from resources.lib.translate import translatedString as T
+import web_pdb
 
 
 class SkyVideoItalia(object):
-    LOCAL_MAP = {
-        'media.not.found': 31003,
-        'live.not.found': 31004,
-    }
-
     def __init__(self):
-        self.skyit = SkyItalia()
+        self.ISA = addonutils.getSettingAsBool('UseInputStream')
+        self.QUALITY = addonutils.getSettingAsInt('Quality')
+        self.DEVMODE = addonutils.getSettingAsBool('DevMode')
+        self.skyit = SkyItalia(self.DEVMODE)
 
     def addItems(self, items):
         video = False
@@ -33,13 +33,27 @@ class SkyVideoItalia(object):
         self.skyit._log('main, Params = %s' % str(params))
         if 'asset_id' in params:
             # PLAY VIDEO
-            url = self.skyit.getVideo(params['asset_id'])
-            if url:
-                self.skyit._log('main, Media URL = %s' % url, 1)
-                addonutils.setResolvedUrl(url)
+            video = self.skyit.getVideo(
+                params['asset_id'], self.ISA, self.QUALITY)
+            if video:
+                self.skyit._log('main, Media URL = %s' % video.get('path'), 1)
+                item = addonutils.createListItem(
+                    path=video.get('path'),
+                    videoInfo=video.get('videoInfo'),
+                    arts=video.get('arts'),
+                    isFolder=False)
+                if self.ISA:
+                    import inputstreamhelper
+                    is_helper = inputstreamhelper.Helper('hls')
+                    if is_helper.check_inputstream():
+                        item.setContentLookup(False)
+                        item.setMimeType('application/x-mpegURL')
+                        item.setProperty('inputstream', is_helper.inputstream_addon)
+                        item.setProperty('inputstream.adaptive.manifest_type', 'hls')
+                addonutils.setResolvedUrl(item=item, exit=False)
             else:
                 self.skyit._log('main, Media URL not found, asset_id = %s' % params['asset_id'], 3)
-                addonutils.notify(addonutils.LANGUAGE(self.LOCAL_MAP['media.not.found']))
+                addonutils.notify(T('media.not.found'))
                 addonutils.setResolvedUrl(solved=False)
 
         elif 'playlist_id' in params:
@@ -75,10 +89,19 @@ class SkyVideoItalia(object):
                     arts=live_content.get('arts'),
                     isFolder=False
                 )
-                addonutils.setResolvedUrl(item=item)
+                if self.ISA and not eval(params.get('no_isa')):
+                    import inputstreamhelper
+                    is_helper = inputstreamhelper.Helper('hls')
+                    if is_helper.check_inputstream():
+                        item.setContentLookup(False)
+                        item.setMimeType('application/x-mpegURL')
+                        item.setProperty('inputstream', is_helper.inputstream_addon)
+                        item.setProperty('inputstream.adaptive.manifest_type', 'hls')
+
+                addonutils.setResolvedUrl(item=item, exit=False)
             else:
                 self.skyit._log('main, Livestream URL not found, id = %s' % params['livestream_id'], 3)
-                addonutils.notify(addonutils.LANGUAGE(self.LOCAL_MAP['live.not.found']))
+                addonutils.notify(T('live.not.found'))
                 addonutils.setResolvedUrl(solved=False)
 
         elif 'live' in params:

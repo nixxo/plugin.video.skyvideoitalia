@@ -7,6 +7,7 @@ import re
 import requests
 
 from resources.lib import addonutils
+from resources.lib.translate import translatedString as T
 from simplecache import SimpleCache
 
 
@@ -18,52 +19,45 @@ class SkyItalia:
     GET_VIDEO_SEARCH = 'https://video.sky.it/be/getVideoDataSearch?token={token}&section={section}&subsection={subsection}&page={page}&count=30'  # noqa: E501
     GET_PLAYLISTS = 'https://video.sky.it/be/getPlaylistInfo?token={token}&section={section}&subsection={subsection}&start=0&limit=31'  # noqa: E501
     GET_PLAYLIST_VIDEO = 'https://video.sky.it/be/getPlaylistVideoData?token={token}&id={id}'  # noqa: E501
-    GET_VIDEO_DATA = 'https://apid.sky.it/vdp/v1/getVideoData?token={token}&caller=sky&rendition=web&id={id}'  # noqa: E501
+    GET_VIDEO_DATA = 'https://apid.sky.it/vdp/v1/getVideoData?token={token}&caller=sky&rendition={rendition}&id={id}'  # noqa: E501
     GET_LIVESTREAM = 'https://apid.sky.it/vdp/v1/getLivestream?id=%s'
     LIVESTREAMS = {
         '1': {
             'label': 'Diretta TG24',
-            'icon': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Sky_TG24_-_Logo_2021.svg/512px-Sky_TG24_-_Logo_2021.svg.png'
+            'icon': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Sky_TG24_-_Logo_2021.svg/512px-Sky_TG24_-_Logo_2021.svg.png',
         },
         '2': {
             'label': 'Cielo TV',
-            'icon': 'https://upload.wikimedia.org/wikipedia/it/thumb/6/61/Cielo_TV_logo.svg/512px-Cielo_TV_logo.svg.png'
+            'icon': 'https://upload.wikimedia.org/wikipedia/it/thumb/6/61/Cielo_TV_logo.svg/512px-Cielo_TV_logo.svg.png',
+            'no_isa': True,
         },
         # '3': {'label':'Ante Factor','icon':''},
         # '4': {'label':'Le dirette di Sky Sport','icon':''},
         '7': {
             'label': 'TV8',
-            'icon': 'https://upload.wikimedia.org/wikipedia/it/thumb/6/6d/TV8_Logo_2016.svg/512px-TV8_Logo_2016.svg.png'
+            'icon': 'https://upload.wikimedia.org/wikipedia/it/thumb/6/6d/TV8_Logo_2016.svg/512px-TV8_Logo_2016.svg.png',
+            'no_isa': True,
         },
         '9': {
             'label': 'Le dirette live di Sky',
-            'icon': ''
+            'icon': '',
         },
     }
     TOKEN = 'F96WlOd8yoFmLQgiqv6fNQRvHZcsWk5jDaYnDvhbiJk'
     TIMEOUT = 15
-    DEBUG = addonutils.getSettingAsBool('Debug')
-    LOGLEVEL = addonutils.getSettingAsInt('LogLevel')
-    QUALITY = addonutils.getSettingAsInt('Quality')
     QUALITIES = ['web_low_url', 'web_med_url', 'web_high_url', 'web_hd_url']
-    LOCAL_MAP = {
-        'error.openurl': 31000,
-        'error.json': 31001,
-        'error.json.decode': 31002,
-        'playlist.title': 32001,
-        'dirette.title': 32002,
-    }
 
-    def __init__(self):
+    def __init__(self, devmode=False):
         """
         initialize SimpleCache.
         """
         self.cache = SimpleCache()
+        self.DEVMODE = devmode
 
     def _log(self, msg, level=0):
         """
         Log message
-        If DEBUG is selected, all messages are forced to ERROR,
+        If DEVMODE is enabled, all debug messages are raised to INFO,
         so everithing from the plugin is visible without
         activating Debug Log in Kodi.
 
@@ -72,9 +66,9 @@ class SkyItalia:
         :param      level:  loglevel
         :type       level:  int
         """
-        if self.DEBUG:
-            addonutils.log(msg, 3)
-        elif level >= self.LOGLEVEL:
+        if self.DEVMODE:
+            addonutils.log(msg, 1 if level == 0 else level)
+        elif level >= 3:
             addonutils.log(msg, level)
 
     def _openURL(self, url, hours=24):
@@ -109,7 +103,7 @@ class SkyItalia:
         except Exception as e:
             self.cache = None
             self._log("openURL Failed! " + str(e), 3)
-            addonutils.notify(addonutils.LANGUAGE(self.LOCAL_MAP['error.openurl']))
+            addonutils.notify(T('error.openurl'))
             addonutils.endScript()
 
     def _loadData(self, url, hours=24):
@@ -148,7 +142,7 @@ class SkyItalia:
                 items = json.loads(main)
                 self._log('loadData, main menu found: %d items' % len(items))
             except Exception as e:
-                addonutils.notify(addonutils.LANGUAGE(self.LOCAL_MAP['error.json']))
+                addonutils.notify(T('error.json'))
                 self._log('loadJsonData, NO JSON DATA FOUND; ' + str(e), 3)
                 addonutils.endScript()
 
@@ -176,6 +170,43 @@ class SkyItalia:
         if subsection:
             icon_path = os.path.join(icon_path, subsection)
         return icon_path + '.png'
+
+    def _getDate(self, date):
+        """
+        Parses the date in the format DD/MM/YYYY and returns it in
+        the format YYYY-MM-DD
+
+        :param      date:  The date
+        :type       date:  str
+        """
+        try:
+            dd, mm, yy = re.match(r'(\d{2})/(\d{2})/(\d{4})', date).groups()
+        except:
+            dd, mm, yy = '01,01,2000'.split(',')
+        return '%s-%s-%s' % (yy, mm, dd)
+
+    def _getArts(self, icon=None, thumb=None, fanart=None):
+        arts = {'arts': {}}
+        arts['arts']['icon'] = icon or addonutils.ICON
+        arts['arts']['fanart'] = fanart or addonutils.FANART
+        arts['arts']['thumb'] = thumb
+        return arts
+
+    def _getVideoInfo(self, data, title=None):
+        if not title:
+            title = self._cleanTitle(
+                data.get('title') or data.get('title_norm'))
+        info = {
+            'videoInfo': {
+                'mediatype': 'video',
+                'title': title,
+                'plot': data.get('xml_value') or data.get('short_desc') or data.get('meta_description'),
+                'aired': self._getDate(data.get('modify_date') or data.get('create_date')),
+            },
+        }
+        info.update(self._getArts(
+            thumb=data.get('thumb') or data.get('video_still')))
+        return info
         
     def _getAssets(self, data, title=''):
         """
@@ -192,21 +223,18 @@ class SkyItalia:
         self._log('getAssets, assets = %d' % len(data['assets']), 1)
         for item in data['assets']:
             label = self._cleanTitle(item['title'], title)
-            yield {
+            info = {
                 'label': label,
                 'params': {
                     'asset_id': item['asset_id']
                 },
-                'arts': {
-                    'thumb': item.get('video_still') or item.get('thumb'),
-                    'fanart': addonutils.FANART,
-                },
                 'videoInfo': {
                     'mediatype': 'video',
-                    'title': label,
                 },
                 'isPlayable': True,
             }
+            info.update(self._getVideoInfo(item, label))
+            yield info
 
     def getMainMenu(self):
         """
@@ -221,75 +249,70 @@ class SkyItalia:
             # yield only active menu elements
             if menu[item]['active'] == 'Y':
                 section = item.strip('/')
-                yield {
+                info = {
                     'label': menu[item]['label'],
                     'params': {
                         'section': section
                     },
-                    'arts': {
-                        'icon': self._iconPath(section),
-                        'fanart': addonutils.FANART,
-                    },
                 }
-        yield {
-            'label': addonutils.LANGUAGE(self.LOCAL_MAP['dirette.title']),
+                info.update(self._getArts(
+                    icon=self._iconPath(section)))
+                yield info
+        info = {
+            'label': T('dirette.title'),
             'params': {
                 'live': True
             },
-            'arts': {
-                'icon': addonutils.ICON,
-                'fanart': addonutils.FANART,
-            },
         }
+        info.update(self._getArts())
+        yield info
 
     def getSection(self, section):
         self._log('getSection, section = %s' % section, 1)
         subsections = self._loadData('%s%s' % (self.HOME, section))
         for s, t in subsections:
             label = self._cleanTitle(t)
-            yield {
+            info = {
                 'label': label,
                 'params': {
                     'section': section,
                     'subsection': s,
                     'title': label,
                 },
-                'arts': {
-                    'icon': self._iconPath(section, s),
-                    'fanart': addonutils.FANART,
-                },
             }
+            info.update(self._getArts(
+                icon=self._iconPath(section, s)))
+            yield info
 
     def getSubSection(self, section, subsection, title, page=0):
         self._log('getSubSection, section/subsection = %s/%s' % (section, subsection), 1)
         if self.getPlaylistsCount(section, subsection, True) > 0:
-            yield {
-                'label': addonutils.LANGUAGE(self.LOCAL_MAP['playlist.title']) % title,
+            info = {
+                'label': T('playlist.title') % title,
                 'params': {
                     'section': section,
                     'subsection': subsection,
                     'playlist': title,
                 },
-                'arts': {
-                    'icon': self._iconPath(section, subsection),
-                    'fanart': addonutils.FANART,
-                },
             }
+            info.update(self._getArts(
+                icon=self._iconPath(section, subsection)))
+            yield info
 
-        url = self.GET_VIDEO_SEARCH
-        url = url.replace('{token}', self.TOKEN)
-        url = url.replace('{section}', section)
-        url = url.replace('{subsection}', subsection)
-        url = url.replace('{page}', str(page))
+        url = self.GET_VIDEO_SEARCH.format(
+            token=self.TOKEN,
+            section=section,
+            subsection=subsection,
+            page=str(page))
         data = self._loadData(url, hours=0.5)
         yield from self._getAssets(data, title)
 
     def getPlaylistsCount(self, section, subsection, test=False):
         self._log('getPlaylistsCount, section/subsection = %s/%s' % (section, subsection), 1)
-        url = self.GET_PLAYLISTS
-        url = url.replace('{token}', self.TOKEN)
-        url = url.replace('{section}', section)
-        url = url.replace('{subsection}', subsection)
+        url = self.GET_PLAYLISTS.format(
+            token=self.TOKEN,
+            section=section,
+            subsection=subsection)
         data = self._loadData(url)
         length = len(data)
         self._log('getPlaylistsCount, data length:%d' % length)
@@ -301,16 +324,15 @@ class SkyItalia:
         data = self.getPlaylistsCount(section, subsection)
 
         for item in data:
-            yield {
+            info = {
                 'label': self._cleanTitle(item['title']),
                 'params': {
                     'playlist_id': item['playlist_id'],
                 },
-                'arts': {
-                    'thumb': item['thumb'],
-                    'fanart': addonutils.FANART,
-                },
             }
+            info.update(self._getArts(
+                thumb=item.get('thumb')))
+            yield info
 
     def getPlaylistContent(self, playlist_id):
         """
@@ -323,9 +345,8 @@ class SkyItalia:
         :rtype:     dict
         """
         self._log('getPlaylistContent, playlist_id = %s' % playlist_id, 1)
-        url = self.GET_PLAYLIST_VIDEO
-        url = url.replace('{token}', self.TOKEN)
-        url = url.replace('{id}', playlist_id)
+        url = self.GET_PLAYLIST_VIDEO.format(
+            token=self.TOKEN, id=playlist_id)
         data = self._loadData(url, hours=0.5)
         yield from self._getAssets(data)
 
@@ -338,18 +359,18 @@ class SkyItalia:
         """
         self._log('getLiveStreams, total %d streams found.' % len(self.LIVESTREAMS), 1)
         for i in self.LIVESTREAMS:
-            yield {
+            info = {
                 'label': self.LIVESTREAMS[i]['label'],
                 'params': {
                     'livestream_id': i,
-                },
-                'arts': {
-                    'icon': self.LIVESTREAMS[i].get('icon'),
-                    'thumb': self.LIVESTREAMS[i].get('icon'),
-                    'fanart': addonutils.FANART,
+                    'no_isa': self.LIVESTREAMS[i].get('no_isa'),
                 },
                 'isPlayable': True,
             }
+            info.update(self._getArts(
+                thumb=self.LIVESTREAMS[i].get('icon'),
+                icon=self.LIVESTREAMS[i].get('icon')))
+            yield info
 
     def getLiveStream(self, livestream_id=None):
         """
@@ -364,19 +385,19 @@ class SkyItalia:
         if data.get('streaming_url'):
             self._log('getLiveStream, streaming_url = %s' % data['streaming_url'])
 
-            return {
+            info = {
                 'path': data['streaming_url'],
                 'videoInfo': {
                     'title': self.LIVESTREAMS[livestream_id]['label'],
                     'plot': data.get('short_desc') or data.get('meta_description'),
                 },
-                'arts': {
-                    'icon': self.LIVESTREAMS[livestream_id].get('icon'),
-                }
             }
+            info.update(self._getArts(
+                icon=self.LIVESTREAMS[livestream_id].get('icon')))
+            return info
         return None
 
-    def getVideo(self, asset_id):
+    def getVideo(self, asset_id, isa=False, quality=3):
         """
         Retrieve the media url associated to the provided asset_id
         and according to the quality settings
@@ -387,19 +408,29 @@ class SkyItalia:
         :returns:   Media url
         :rtype:     str
         """
-        self._log('getVideo, asset_id = %s' % asset_id, 1)
-        url = self.GET_VIDEO_DATA
-        url = url.replace('{token}', self.TOKEN)
-        url = url.replace('{id}', asset_id)
+        rendition = 'hls' if isa else 'web'
+        self._log('getVideo, asset_id = %s, rendition = %s' % (asset_id, rendition), 1)
+        url = self.GET_VIDEO_DATA.format(
+            token=self.TOKEN, rendition=rendition, id=asset_id)
         data = self._loadData(url, hours=0.1)
 
         url = None
-        self._log('getPlaylistContent, quality_selected = %s' % self.QUALITIES[self.QUALITY])
-        for i in range(int(self.QUALITY), 0, -1):
-            if self.QUALITIES[i] in data:
-                self._log('getPlaylistContent, quality_found = %s' % self.QUALITIES[i])
-                url = data[self.QUALITIES[i]]
-                if url:
-                    break
+        if isa:
+            url = data.get('hls_url')
+        elif isinstance(quality, int):
+            self._log('getPlaylistContent, quality_selected = %s' % self.QUALITIES[quality])
+            for i in range(quality, -1, -1):
+                if self.QUALITIES[i] in data:
+                    self._log('getPlaylistContent, quality_found = %s' % self.QUALITIES[i])
+                    url = data[self.QUALITIES[i]]
+                    if url:
+                        break
 
-        return url
+        info = {
+            'path': url,
+            'videoInfo': {
+                'mediatype': 'video',
+            },
+        }
+        info.update(self._getVideoInfo(data))
+        return info
