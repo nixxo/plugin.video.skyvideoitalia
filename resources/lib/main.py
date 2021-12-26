@@ -16,7 +16,8 @@ class SkyVideoItalia(object):
         video = False
         for item in items:
             if item.get('videoInfo'):
-                video = any([item['videoInfo'].get('mediatype') == 'video', video])
+                video = any([item['videoInfo'].get(
+                    'mediatype') == 'video', video])
             addonutils.addListItem(
                 label=item.get('label'),
                 label2=item.get('label2'),
@@ -48,17 +49,21 @@ class SkyVideoItalia(object):
                     if is_helper.check_inputstream():
                         item.setContentLookup(False)
                         item.setMimeType('application/x-mpegURL')
-                        item.setProperty('inputstream', is_helper.inputstream_addon)
-                        item.setProperty('inputstream.adaptive.manifest_type', 'hls')
+                        item.setProperty(
+                            'inputstream', is_helper.inputstream_addon)
+                        item.setProperty(
+                            'inputstream.adaptive.manifest_type', 'hls')
                 addonutils.setResolvedUrl(item=item, exit=False)
             else:
-                self.skyit._log('main, Media URL not found, asset_id = %s' % params['asset_id'], 3)
+                self.skyit._log(
+                    'main, Media URL not found, asset_id = %s' % params['asset_id'], 3)
                 addonutils.notify(T('media.not.found'))
                 addonutils.setResolvedUrl(solved=False)
 
         elif 'playlist_id' in params:
             # PLAYLIST CONTENT
-            playlist_content = self.skyit.getPlaylistContent(params['playlist_id'])
+            playlist_content = self.skyit.getPlaylistContent(
+                params['playlist_id'])
             self.addItems(playlist_content)
 
         elif all(x in params for x in ['playlist', 'section', 'subsection']):
@@ -95,12 +100,15 @@ class SkyVideoItalia(object):
                     if is_helper.check_inputstream():
                         item.setContentLookup(False)
                         item.setMimeType('application/x-mpegURL')
-                        item.setProperty('inputstream', is_helper.inputstream_addon)
-                        item.setProperty('inputstream.adaptive.manifest_type', 'hls')
+                        item.setProperty(
+                            'inputstream', is_helper.inputstream_addon)
+                        item.setProperty(
+                            'inputstream.adaptive.manifest_type', 'hls')
 
                 addonutils.setResolvedUrl(item=item, exit=False)
             else:
-                self.skyit._log('main, Livestream URL not found, id = %s' % params['livestream_id'], 3)
+                self.skyit._log(
+                    'main, Livestream URL not found, id = %s' % params['livestream_id'], 3)
                 addonutils.notify(T('live.not.found'))
                 addonutils.setResolvedUrl(solved=False)
 

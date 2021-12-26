@@ -207,7 +207,7 @@ class SkyItalia:
         info.update(self._getArts(
             thumb=data.get('thumb') or data.get('video_still')))
         return info
-        
+
     def _getAssets(self, data, title=''):
         """
         Extract assets from the provided JSON data
@@ -285,7 +285,8 @@ class SkyItalia:
             yield info
 
     def getSubSection(self, section, subsection, title, page=0):
-        self._log('getSubSection, section/subsection = %s/%s' % (section, subsection), 1)
+        self._log('getSubSection, section/subsection = %s/%s' %
+                  (section, subsection), 1)
         if self.getPlaylistsCount(section, subsection, True) > 0:
             info = {
                 'label': T('playlist.title') % title,
@@ -308,7 +309,8 @@ class SkyItalia:
         yield from self._getAssets(data, title)
 
     def getPlaylistsCount(self, section, subsection, test=False):
-        self._log('getPlaylistsCount, section/subsection = %s/%s' % (section, subsection), 1)
+        self._log('getPlaylistsCount, section/subsection = %s/%s' %
+                  (section, subsection), 1)
         url = self.GET_PLAYLISTS.format(
             token=self.TOKEN,
             section=section,
@@ -320,7 +322,8 @@ class SkyItalia:
         return length if test else data
 
     def getPlaylists(self, section, subsection):
-        self._log('getPlaylists, section/subsection = %s/%s' % (section, subsection), 1)
+        self._log('getPlaylists, section/subsection = %s/%s' %
+                  (section, subsection), 1)
         data = self.getPlaylistsCount(section, subsection)
 
         for item in data:
@@ -357,7 +360,8 @@ class SkyItalia:
         :returns:   The live stream infos.
         :rtype:     dicts
         """
-        self._log('getLiveStreams, total %d streams found.' % len(self.LIVESTREAMS), 1)
+        self._log('getLiveStreams, total %d streams found.' %
+                  len(self.LIVESTREAMS), 1)
         for i in self.LIVESTREAMS:
             info = {
                 'label': self.LIVESTREAMS[i]['label'],
@@ -383,7 +387,8 @@ class SkyItalia:
         data = self._loadData(
             self.GET_LIVESTREAM % livestream_id, hours=0.1)
         if data.get('streaming_url'):
-            self._log('getLiveStream, streaming_url = %s' % data['streaming_url'])
+            self._log('getLiveStream, streaming_url = %s' %
+                      data['streaming_url'])
 
             info = {
                 'path': data['streaming_url'],
@@ -409,7 +414,8 @@ class SkyItalia:
         :rtype:     str
         """
         rendition = 'hls' if isa else 'web'
-        self._log('getVideo, asset_id = %s, rendition = %s' % (asset_id, rendition), 1)
+        self._log('getVideo, asset_id = %s, rendition = %s' %
+                  (asset_id, rendition), 1)
         url = self.GET_VIDEO_DATA.format(
             token=self.TOKEN, rendition=rendition, id=asset_id)
         data = self._loadData(url, hours=0.1)
@@ -418,10 +424,12 @@ class SkyItalia:
         if isa:
             url = data.get('hls_url')
         elif isinstance(quality, int):
-            self._log('getPlaylistContent, quality_selected = %s' % self.QUALITIES[quality])
+            self._log('getPlaylistContent, quality_selected = %s' %
+                      self.QUALITIES[quality])
             for i in range(quality, -1, -1):
                 if self.QUALITIES[i] in data:
-                    self._log('getPlaylistContent, quality_found = %s' % self.QUALITIES[i])
+                    self._log('getPlaylistContent, quality_found = %s' %
+                              self.QUALITIES[i])
                     url = data[self.QUALITIES[i]]
                     if url:
                         break
