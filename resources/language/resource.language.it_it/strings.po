@@ -55,8 +55,8 @@ msgid "Live Streaming"
 msgstr "Dirette Streaming"
 
 msgctxt "#32002"
-msgid "Playlists from %s"
-msgstr "Playlist di %s"
+msgid "Playlists from {title}"
+msgstr "Playlist di {title}"
 
 msgctxt "#33000"
 msgid "Error retrieving URL. Check log."

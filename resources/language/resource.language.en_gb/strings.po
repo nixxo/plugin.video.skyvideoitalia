@@ -55,7 +55,7 @@ msgid "Live Streaming"
 msgstr ""
 
 msgctxt "#32002"
-msgid "Playlists from %s"
+msgid "Playlists from {title}"
 msgstr ""
 
 msgctxt "#33000"
